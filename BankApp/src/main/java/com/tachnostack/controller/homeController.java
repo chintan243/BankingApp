@@ -3,39 +3,33 @@ package com.tachnostack.controller;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentMap;
 
-import javax.transaction.Transactional;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.tachnostack.domain.Bank;
 import com.tachnostack.domain.InterFundTransfer;
-import com.tachnostack.exception.NotFoundException;
 import com.tachnostack.services.BankServices;
 
 @RestController
 public class homeController {
 
-	@Autowired
 	private BankServices bankServices;
-
-	@Autowired
 	private ConcurrentMap<Long, Long> map;
+	
+	public homeController(BankServices bankServices,ConcurrentMap<Long, Long> map) {
+		this.bankServices = bankServices;
+		this.map = map;
+	}
 
 	@GetMapping("/get/{id}")
 	public Bank getBal(@PathVariable("id") Long id) throws Exception {
 		CompletableFuture<Bank> bank = bankServices.getBalance(id);
 		while (true) {
 			if (bank.isDone()) {
-				System.out.println("Result from asynchronous process  " + id + " - " + bank.get().getCurrentBal());
 				break;
 			}
 		}
@@ -45,16 +39,9 @@ public class homeController {
 	@PostMapping("/deposit")
 	public Bank deposit(@RequestBody Bank bank) throws Exception {
 		setLock(bank.getAccountId());
-		CompletableFuture<Bank> depositFuture = bankServices.deposit(bank.getAccountId(), bank.getCurrentBal())
-				.handle((s,t)->{
-					if(s != null)
-						return s;
-					System.out.println("Not possible Home Controller: --- "+ t.getMessage());
-					throw new NotFoundException("Deposit is not posssible!!");
-				});
+		CompletableFuture<Bank> depositFuture = bankServices.deposit(bank.getAccountId(), bank.getCurrentBal());
 		while (true) {
 			if (depositFuture.isDone()) {
-				System.out.println("Result from asynchronous process  " + depositFuture.get().getAccountId() + " - "+ depositFuture.get().getCurrentBal());
 				break;
 			}
 		}
@@ -65,17 +52,9 @@ public class homeController {
 	@PostMapping("/withdraw")
 	public Bank WithDraw(@RequestBody Bank bank) throws Exception {
 		setLock(bank.getAccountId());
-		CompletableFuture<Bank> withdrawFuture = bankServices.withdraw(bank.getAccountId(), bank.getCurrentBal())
-				.handle((s,t)->{
-					if(s != null)
-						return s;
-					System.out.println("Not possible Home Controller: --- "+ t.getMessage());
-					throw new NotFoundException("Withdraw is not posssible!!");
-				});
+		CompletableFuture<Bank> withdrawFuture = bankServices.withdraw(bank.getAccountId(), bank.getCurrentBal());
 		while (true) {
 			if (withdrawFuture.isDone()) {
-				System.out.println("Result from asynchronous process  " + withdrawFuture.get().getAccountId() + " - "
-						+ withdrawFuture.get().getCurrentBal());
 				break;
 			}
 		}
@@ -87,14 +66,7 @@ public class homeController {
 	public Bank interFundTransferOps(@RequestBody InterFundTransfer interFundTransfer) throws Exception {
 		setLock(interFundTransfer.getFromAccount(),interFundTransfer.getToAccount());
 		CompletableFuture<Bank> interFundTransferFuture = bankServices.interFundTransaction(interFundTransfer.getFromAccount(),
-				interFundTransfer.getToAccount(), interFundTransfer.getTransferAmount())
-				.handle((s,t)->{
-					if(s != null)
-						return s;
-					else
-						System.out.println("Not possible Home Controller: --- "+ t.getMessage());
-					throw new NotFoundException("Inter Fund Transfer is not posssible!!");
-				});
+				interFundTransfer.getToAccount(), interFundTransfer.getTransferAmount());
 		while (true) {
 			if (interFundTransferFuture.isDone()) {
 				break;
@@ -108,10 +80,7 @@ public class homeController {
 	private synchronized void setLock(Long fromAccount, Long toAccount) throws InterruptedException {
 		while (this.map.containsKey(toAccount) || this.map.containsKey(fromAccount)) {
 			wait();
-			System.out.println("Wait temp release Lock - " + Thread.currentThread().getName());
 		}
-		System.out.println("set Lock - " + Thread.currentThread().getName() + "  " + fromAccount);
-		System.out.println("set Lock - " + Thread.currentThread().getName() + "  " + toAccount);
 		this.map.putIfAbsent(fromAccount, (long) 1);
 		this.map.putIfAbsent(toAccount, (long) 1);
 	}
@@ -119,14 +88,11 @@ public class homeController {
 	private synchronized void setLock(Long accId) throws InterruptedException {
 		while (this.map.containsKey(accId)) {
 			wait();
-			System.out.println("Wait temp release Lock - " + Thread.currentThread().getName() + "  " + accId);
 		}
-		System.out.println("set Lock - " + Thread.currentThread().getName() + "  " + accId);
 		this.map.putIfAbsent(accId, (long) 1);
 	}
 	
 	private synchronized void freeAccount(Long accId) {
-		System.out.println("Released Lock - " + Thread.currentThread().getName() + "  " + accId);
 		this.map.remove(accId);
 		notify();
 	}

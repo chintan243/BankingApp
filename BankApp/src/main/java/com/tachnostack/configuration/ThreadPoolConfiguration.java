@@ -34,7 +34,6 @@ public class ThreadPoolConfiguration {
     
     @Bean
     public ConcurrentMap<Long, Long> getHashMap(){
-    	System.out.println("Creating the instant of the ArrayBlocking Queue");
     	return new ConcurrentHashMap<Long, Long>();
     }
 }

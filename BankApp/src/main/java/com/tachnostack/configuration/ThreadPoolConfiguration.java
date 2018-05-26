@@ -15,10 +15,10 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 public class ThreadPoolConfiguration {
 
 	@Value("${threadpool.corepoolsize}")
-    int corePoolSize;
-     
-    @Value("${threadpool.maxpoolsize}")
-    int maxPoolSize;
+	int corePoolSize;
+
+	@Value("${threadpool.maxpoolsize}")
+	int maxPoolSize;
      
     @Bean
     public Executor taskExecutor() {
